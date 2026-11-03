@@ -1,0 +1,1 @@
+export default function NotFound(){return <main className="error-page" id="main"><p className="eyebrow">MANJI GATEWAY / 404</p><h1>Halaman tidak ditemukan.</h1><a href="/login">Kembali ke Gateway</a></main>;}

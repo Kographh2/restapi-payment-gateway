@@ -1,0 +1,8 @@
+# Signing credentials must never enter source control.
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pk8
+aplikasi/.signing-*/
+aplikasi/alignment-check.apk

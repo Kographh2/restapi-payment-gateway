@@ -1,0 +1,23 @@
+{
+    "schema_version":  1,
+    "filename":  "manji-gateway-release.apk",
+    "application_id":  "id.biz.manjifood.gateway",
+    "version_code":  3,
+    "version_name":  "0.3.0",
+    "min_sdk":  26,
+    "target_sdk":  35,
+    "sha256":  "c002c755dd907db2dc4120108bdec9c0b285f3de41f60d64a5341506b8983fe9",
+    "size_bytes":  8319615,
+    "signer_sha256":  "2736668c23d8fde0f96521844df73fdf2b8fbddfd928f331b24b0e0d0265aaab",
+    "source_sha256":  "1decb2582140ac3097fcecbedca408512a07269e4bfc1fc62db36f3fffd1fd46",
+    "verified_at":  "2026-11-02T22:53:37.4491959Z",
+    "signature_verified":  true,
+    "v2":  true,
+    "v3":  true,
+    "alignment_verified":  true,
+    "payload_unchanged":  true,
+    "unsigned_preserved":  true,
+    "rebuilt":  false,
+    "sdk_build_tools":  "35.0.0",
+    "verification_output":  "Verifies\r\nVerified using v1 scheme (JAR signing): false\r\nVerified using v2 scheme (APK Signature Scheme v2): true\r\nVerified using v3 scheme (APK Signature Scheme v3): true\r\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\r\nVerified using v4 scheme (APK Signature Scheme v4): false\r\nVerified for SourceStamp: false\r\nNumber of signers: 1\r\nSigner #1 certificate DN: CN=MANJI Gateway Release, O=MANJI, C=ID\r\nSigner #1 certificate SHA-256 digest: 2736668c23d8fde0f96521844df73fdf2b8fbddfd928f331b24b0e0d0265aaab\r\nSigner #1 certificate SHA-1 digest: d7ceb25d342a7860784718f09aea5bc2e221c966\r\nSigner #1 certificate MD5 digest: 83383833fe1dccf4857c5d815c27e790\r\nSigner #1 key algorithm: RSA\r\nSigner #1 key size (bits): 4096\r\nSigner #1 public key SHA-256 digest: 9e09191ab5a000329774eb917f6bfa40f567aa184fb29444c11db18a16f42bee\r\nSigner #1 public key SHA-1 digest: c659fb62df7769b38141b5e5a08b85c603c926a8\r\nSigner #1 public key MD5 digest: e63c9402beb599a45b59ac006c854fb7"
+}
