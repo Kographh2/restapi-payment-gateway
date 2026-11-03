@@ -12,8 +12,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint src scripts tests packages --max-warnings 0",
     "check:env": "node --import ./scripts/register-typescript.mjs scripts/check-env.ts",
+    "check:database": "node --import ./scripts/register-typescript.mjs scripts/check-database.ts",
     "test:env": "node --import ./scripts/register-typescript.mjs --test --experimental-test-isolation=none tests/environment.test.ts",
-    "test:deployment": "node --import ./scripts/register-typescript.mjs --test --experimental-test-isolation=none tests/deployment.test.ts tests/signed-artifact.test.ts"
+    "test:deployment": "node --import ./scripts/register-typescript.mjs --test --experimental-test-isolation=none tests/deployment.test.ts tests/signed-artifact.test.ts",
+    "test:registration": "node --import ./scripts/register-typescript.mjs --test --experimental-test-isolation=none tests/registration.test.ts tests/registration-sql.test.ts"
   },
   "dependencies": {
     "@manji/contracts": "file:./packages/contracts",

@@ -9,6 +9,7 @@ supabase/
   scripts/
     provision-admin.sql           Provisioning admin melalui psql
     verify.sql                    Pemeriksaan metadata setelah instalasi
+    expose-manji-schema.sql       Perbaikan PGRST106 untuk SQL owner
   seed.sql                        Seed kosong; tanpa credential/data produksi
   seed/local-auth-fixture.sql      Khusus pengujian PostgreSQL/PGlite lokal
   archive/legacy-public/           Tiga migrasi lama, tidak untuk instalasi aktif
@@ -45,6 +46,12 @@ psql -v ON_ERROR_STOP=1 -v admin_user_id='<UUID_AKUN_TERVERIFIKASI>' -f supabase
 ```
 
 Gunakan konfigurasi koneksi psql lokal/secret manager yang sudah disiapkan; jangan menaruh password database di source atau percakapan. Script menolak akun yang belum terverifikasi dan mencatat provisioning pada audit log. Tidak ada akun admin atau password default di paket instalasi.
+
+## Jika registrasi mengembalikan 503 / PGRST106
+
+Migrasi SQL dan Data API Exposed schemas adalah dua pengaturan yang berbeda. Keberadaan tabel saja belum membuat RPC di schema `manji_gateway` tersedia melalui PostgREST. Tambahkan `manji_gateway` ke Data API → Exposed schemas tanpa menghapus schema yang sudah ada. Jika ada override eksplisit pada role `authenticator`, [scripts/expose-manji-schema.sql](scripts/expose-manji-schema.sql) dapat menambahkan schema ke allowlist tersebut melalui koneksi SQL owner, tanpa mengubah RLS atau grant. Script menolak menebak allowlist yang tidak dapat dibaca; gunakan dashboard dalam kondisi itu.
+
+Periksa melalui `npm run check:database -- --production`. Opsi tambahan `--endpoint` juga memeriksa health dan POST registrasi dengan payload sengaja tidak valid: hasil yang diharapkan 200 dan 400/VALIDATION_ERROR. Probe itu tidak membuat akun dan bukan pengujian pengiriman email/signup lengkap. Lihat [investigasi registrasi](../docs/REGISTRATION.md) untuk bukti dan batas verifikasi produksi.
 
 ## Pengembangan lokal dan arsip
 

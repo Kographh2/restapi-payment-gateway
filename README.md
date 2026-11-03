@@ -22,6 +22,8 @@ The signed release catalog and `/v1/app/latest/download` keep their existing val
 
 ## Deployment
 
+For production registration `503 DATABASE_UNAVAILABLE`, see the [confirmed PGRST106 investigation and targeted repair](docs/REGISTRATION.md). Use `npm run check:database -- --production` to test the real configured Supabase RPC without creating an account. Provider onboarding is not an authentication prerequisite.
+
 Production environment setup for `https://api.manjifood.biz.id`: see the [source audit, required variables, Supabase setup and startup checks](docs/production-environment.md). Use [.env.production.example](.env.production.example) in the host secret manager; [.env.example](.env.example) retains sandbox development defaults. From `web`, run `npm run check:env -- --production` before deployment. The same validation runs at Node server startup. Existing `.env.local` stays untouched; do not include it in a deployment.
 
 Supported values are exactly `PAYMENT_ENV=sandbox|production`, `PROVIDER_MODE=mock|official`, `STORE_DRIVER=pglite|supabase`. Production requires `production`/`official`/`supabase` and HTTPS. The official provider adapter remains disabled, so valid environment configuration cannot enable verified payments. See [this audit's validation record](IMPLEMENTATION_LOG.md).

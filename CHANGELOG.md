@@ -1,5 +1,13 @@
 # Web configuration changes
 
+## 2026-11-03 — Registration 503 / Supabase schema exposure
+
+- Confirmed HTTP 406/PGRST106 on the production-configured custom-schema RPC, alongside deployed health/invalid-registration 503 responses. The failure is schema exposure before Supabase Auth, not payment-provider onboarding.
+- Added a guarded owner-only SQL repair that preserves existing exposed schemas and all RLS/grants, plus safe read-only database/endpoint diagnostics and schema/trigger verification queries.
+- Added request-correlated structured database, Auth and configuration failure logging without raw errors, payloads, credentials or email addresses. Provider capability reporting is informational once per process and remains independent of authentication.
+- Kept official verification disabled, production mock rejection, registration/rate/role checks and UI intact. Distinguish Auth infrastructure 503s from rejected registration/password input instead of masking upstream outages as client validation errors.
+- Twenty-three local tests passed, including real-SDK fixture transport, merchant approval SQL, RLS isolation and protected settlement regressions; typecheck/lint and SQL-bundle integrity passed. Remote schema configuration still requires owner action; no production-fix claim is made without a successful endpoint recheck.
+
 ## 2026-11-03 — Vercel E404 and standalone repository fix
 
 - Included the four existing private packages in `packages/` and replaced wildcard private dependencies with repository-local `file:` references, including contracts' transitive private dependencies.

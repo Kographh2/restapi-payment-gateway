@@ -1,5 +1,44 @@
 # Production environment audit — 2026-11-02
 
+## Production registration 503 — 2026-11-03
+
+Confirmed failure and trace:
+
+- Direct live probes returned `503 DATABASE_UNAVAILABLE` for GET `https://api.manjifood.biz.id/health` and POST `/v1/auth/register` with body `{}`. The deliberately invalid registration probe cannot create an account or send email. Initial request IDs: `28d84eac-3d62-4b97-8cb0-264ca38a58dc` and `317b4c81-aa18-4b02-92d1-a1382ae0aa72`.
+- A separate read-only RPC using the local production Supabase configuration returned **HTTP 406 / PGRST106** for `schema('manji_gateway').rpc('account_command', {p_command:'public.configuration',...})`. The configured APP_BASE_URL matches the deployed production origin. Configuration validation passed; credential values, project URL, upstream message/details/hint and private data were not output. This proves the configured project's custom-schema selection is rejected by PostgREST. Private Vercel environment settings/logs themselves were not accessed, so no independent claim that every deployed variable matches the local file is made.
+- Registration performs the database `rate` RPC before parsing the input and the `public.configuration` RPC before calling Supabase Auth. Both target the rejected schema. The adapter previously discarded PostgREST status/code and translated every unrecognized database error to the generic UI message. No provider adapter is invoked by registration or merchant review. The provider-onboarding warning was a startup capability notice, not an authentication gate.
+- The required production correction is **adding manji_gateway to Supabase Data API Exposed schemas**, preserving all current entries. An existing explicit authenticator override may need the supplied guarded owner SQL instead. This is an external project configuration repair; changing UI error text, falling back to public schema, skipping RPC/rate checks, enabling mock or bypassing RLS would not fix it safely.
+
+Changed files for this task:
+
+- `src/services/diagnostics.ts`: explicit structured log fields and AsyncLocalStorage request correlation; no raw Error/request/stack/body/URL/header serialization.
+- `src/services/database-failure.ts` and `database.ts`: distinguish schema exposure, missing/stale RPC, missing migration, denied database permission, rejected server credential and transport failures, retaining safe client errors and real SQL business/role/rate exceptions.
+- `src/services/http.ts`: request IDs and sanitized operation context cover configuration, database, provider and HTTP failures; already-diagnosed dependency errors are not duplicated. Request audit failures remain separately identified by RPC/command with the same correlation ID.
+- `src/services/identity.ts`: log signup errors under Supabase Auth, distinguish Auth infrastructure failures from rejected input, preserve email-confirmation/PENDING behavior and registration configuration checks; no signup retry or default grant.
+- `src/instrumentation.ts`: fail-closed configuration errors get safe field-name logs; disabled payment capability becomes one informational event per process, loaded only on the Node runtime. No provider verification was enabled.
+- `scripts/check-database.ts` and package scripts: read-only configured RPC test, optional live health/invalid-registration probes, and targeted registration tests. No secret or environment value is printed.
+- `supabase/scripts/expose-manji-schema.sql`: concrete owner repair preserving an existing role/database-specific allowlist, appending only manji_gateway and reloading PostgREST. It refuses to guess an unavailable allowlist and changes no table/function grants or RLS. `verify.sql` now also checks the RPC signatures, signup trigger and only the schema-allowlist role setting.
+- `tests/registration.test.ts`, `tests/registration-sql.test.ts`, `docs/REGISTRATION.md`, Supabase/root README, CHANGELOG and this record.
+
+Actual validation:
+
+| Check | Result |
+| --- | --- |
+| Real Supabase SDK with isolated fixture transport | Eight tests passed: production official-mode registration 202/PENDING on both API aliases; custom-schema/service-key RPC and anon-key Auth separation; exact PGRST106 reproduction before signup; missing RPC/migration, permissions, credentials and network classification; rate/role/closed-registration enforcement; Auth 500/422/429 distinction; health independent of provider; concurrent correlation and startup informational event. These are transport fixtures, not hosted signup claims. |
+| Existing environment/deployment/download tests | Twelve tests passed, zero failures/skips. Together with the above: 20 lightweight tests passed in one run. |
+| PostgreSQL registration/merchant workflow + repair | One test passed using real PGlite/PostgreSQL and all five dated migrations: editable ADMIN metadata remains PENDING; only authorized admin review approves merchant; provider remains disabled; RLS/privileged RPC denial survives the repair; existing exposed schemas preserved, repeat execution idempotent, unknown allowlist rejected. |
+| Existing cross-tenant SQL/RLS regression | One test passed. |
+| Existing immutable verification/settlement/refund regression | One test passed; no real provider access implied by its owned SQL fixture. |
+| Total local tests | **23 passed**, no skips in the final runs. |
+| TypeScript / ESLint | Passed, zero lint warnings. Initial test-only generic typing and an unnecessary default Supabase schema generic mismatch were corrected before the passing final checks. |
+| SQL bundle integrity | Passed; all five active migration bodies/order/transactions remain unchanged. No RLS migration was weakened or rewritten. |
+| Real configured database connectivity | **Still fails: 406/PGRST106** until the external schema setting is repaired. This is the confirmed production-configuration blocker, not a passing connectivity test. |
+| Final live endpoint recheck | **Still 503**, as detailed below. Not reported fixed. |
+
+Last recheck: diagnostic event timestamp **2026-11-03 04:02:18 UTC**. The configured Supabase RPC still reported PGRST106/406. Live GET `/health` returned 503, request ID `0641da1c-7931-4435-bc44-702b13e72c61`; live POST `/v1/auth/register` with invalid body returned 503, request ID `f28c585d-08c7-4a4b-b7a7-8544cddb86fe`.
+
+Access limitation and outstanding production action: no owner PostgreSQL connection, Supabase project-settings connector or management credential is available in this session. Service-role REST access cannot edit project API exposure settings. The operator was asked to add the schema (or execute the tested owner repair) and confirm, after which the real RPC/endpoints can be checked again. No remote configuration/migration, account creation, email, credential rotation, commit, push or deployment was performed. UI, production mock rejection, official provider-disabled behavior, RLS and payment authority remain intact. The earlier curl/proxy failures were superseded by the successful native-fetch probes above; production unavailability is not inferred solely from a local network error.
+
 ## Vercel install E404 — 2026-11-03
 
 Observed remote failure: Vercel cloned `restapi-payment-gateway` at `55eb371`, then npm tried to fetch `@manji/contracts@*` from the public registry and returned 404. Read-only Git inspection confirmed this is now a separate Git repository rooted directly at `web`: the commit includes src/package.json but none of the parent monorepo's packages, root manifest/lockfile, loader, TypeScript devDependencies or ESLint config. The initial monorepo deployment instructions therefore did not match the uploaded repository.

@@ -4,6 +4,21 @@ begin read only;
 select current_database() as database_name,
        to_regnamespace('manji_gateway') is not null as gateway_schema_installed;
 
+select to_regprocedure('manji_gateway.account_command(uuid,uuid,text,jsonb)') is not null as account_rpc_installed,
+       to_regprocedure('manji_gateway.account_mutation(uuid,uuid,text,jsonb,text,text)') is not null as account_mutation_installed;
+
+-- Only inspect the schema allowlist, never unrelated role settings/secrets.
+select r.rolname,case when s.setdatabase=0 then 'role' else d.datname end as setting_scope,
+       substring(item from length('pgrst.db_schemas=')+1) as explicitly_exposed_schemas
+from pg_db_role_setting s join pg_roles r on r.oid=s.setrole
+left join pg_database d on d.oid=s.setdatabase
+cross join lateral unnest(s.setconfig) item
+where r.rolname='authenticator' and item like 'pgrst.db_schemas=%';
+
+select t.tgname,t.tgenabled
+from pg_trigger t
+where t.tgrelid='auth.users'::regclass and t.tgname='manji_gateway_signup';
+
 -- Paket aktif saat dibuat berisi 23 tabel aplikasi; semua harus mengaktifkan RLS.
 select count(*) as application_tables,
        count(*) filter (where rowsecurity) as tables_with_rls,

@@ -1,7 +1,8 @@
 import {randomUUID} from 'node:crypto';
 import {z,ZodError} from 'zod';
 import * as input from '@manji/validation';
-import {config,type Config} from './config';
+import {config,ConfigurationError,type Config} from './config';
+import {DependencyError,logDiagnostic,requestDiagnostics} from './diagnostics';
 import {database,type Database} from './database';
 import {authenticate,adminOnly,merchantId,userOnly,type Principal} from './auth';
 import {Identity,type SessionTokens} from './identity';
@@ -31,9 +32,15 @@ function secretFields(c:Config,prefix:'key'|'device'|'challenge'|'webhook'){
   return {id,secret_hash:hash(value),secret_ciphertext:encrypt(value,c.APP_ENCRYPTION_KEY),public_id:prefix==='key'?value.split('.')[0]:undefined};
 }
 export async function handle(req:Request,deps?:Dependencies){
-  const requestId=randomUUID(),started=Date.now();let c:Config|undefined,db:Database|undefined,p:Principal|undefined,operation='unknown',response:Response;let errorCode='';
+  const requestId=randomUUID();
+  return requestDiagnostics.run({request_id:requestId,operation:safeOperation(new URL(req.url).pathname.replace(/^\/api\/v1(?=\/|$)/,'/v1')),method:['GET','POST','DELETE','HEAD'].includes(req.method)?req.method:'OTHER'},()=>handleRequest(req,requestId,deps));
+}
+async function handleRequest(req:Request,requestId:string,deps?:Dependencies){
+  const started=Date.now();let c:Config|undefined,db:Database|undefined,p:Principal|undefined,operation='unknown',response:Response;let errorCode='';
   try{c=deps?.c??config();db=deps?.db??await database(c);response=await route(req,c,db,(principal,op)=>{p=principal;operation=op;},deps?.distribution);}
-  catch(error){const e=error instanceof ApiError?error:error instanceof ZodError||error instanceof SyntaxError?new ApiError(400,'VALIDATION_ERROR','Periksa isian dan format permintaan'):new ApiError(503,'SERVICE_UNAVAILABLE','Layanan belum tersedia. Periksa konfigurasi server.');errorCode=e.code;response=json({error:{code:e.code,message:e.message,request_id:requestId}},e.status);if(e.status===429)response.headers.set('retry-after','60');}
+  catch(error){const e=error instanceof ApiError?error:error instanceof ZodError||error instanceof SyntaxError?new ApiError(400,'VALIDATION_ERROR','Periksa isian dan format permintaan'):new ApiError(503,'SERVICE_UNAVAILABLE','Layanan belum tersedia. Periksa konfigurasi server.');
+    if(e.status>=500&&!(error instanceof DependencyError))logDiagnostic('error',{event:'request_failed',subsystem:error instanceof ConfigurationError?'configuration':e.code==='PROVIDER_NOT_ONBOARDED'||e.code==='DYNAMIC_QRIS_UNAVAILABLE'?'payments.provider':'http',failure:error instanceof ConfigurationError?'invalid_configuration':e.code,configuration_fields:error instanceof ConfigurationError?error.issues.map(issue=>issue.split(':')[0]):undefined});
+    errorCode=e.code;response=json({error:{code:e.code,message:e.message,request_id:requestId}},e.status);if(e.status===429)response.headers.set('retry-after','60');}
   response.headers.set('x-request-id',requestId);response.headers.set('cache-control',response.headers.get('content-type')==='application/vnd.android.package-archive'?'private, no-store, no-transform':'no-store');response.headers.set('x-content-type-options','nosniff');
   if(db){try{await db.rpc('worker_command',{p_command:'request.log',p_data:{merchant_id:p?.merchant??null,actor_id:p?.actor??null,credential_id:p?.subject??null,request_id:requestId,operation,method:req.method,status_code:response.status,duration_ms:Date.now()-started,code:errorCode||'REQUEST_REJECTED'}});}catch{/* Do not log bodies, credentials or internal database messages. */}}
   return response;

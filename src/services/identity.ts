@@ -5,6 +5,15 @@ import type {Config} from './config';
 import type {Database} from './database';
 import {sandboxAdmin} from './database';
 import {ApiError,ensure,hash,secret,encrypt,passwordHash,passwordMatches,databaseError} from './security';
+import {DependencyError,logDiagnostic} from './diagnostics';
+function registrationAuthFailure(error:unknown):never{
+ const source=error&&typeof error==='object'?error as {code?:unknown;status?:unknown}:{};
+ const status=typeof source.status==='number'?source.status:0;
+ const unavailable=status===0||status>=500;
+ logDiagnostic(unavailable?'error':'warn',{event:'dependency_failure',subsystem:'auth.supabase',failure:unavailable?'registration_service_unavailable':'registration_rejected',upstream_code:source.code,upstream_status:status});
+ if(unavailable)throw new DependencyError('auth.supabase','registration_service_unavailable','REGISTRATION_UNAVAILABLE','Layanan pendaftaran belum tersedia. Silakan coba kembali.');
+ throw new ApiError(status===429?429:400,'REGISTRATION_FAILED','Pendaftaran belum dapat diproses. Periksa email dan kebijakan password.');
+}
 export type AccountView={profile:Profile;applications:Record<string,unknown>[];merchants:{merchant_id:string;role:string;merchants:{name:string};identifier:string;status:string}[]};
 export type SessionTokens={access_token:string;refresh_token:string;expires_at:number;session_id:string;user_id:string};
 export type UserIdentity={user_id:string;session_id:string;access_token:string};
@@ -15,8 +24,9 @@ export class Identity {
   async register(email:string,password:string,displayName:string){
     const settings=await this.db.rpc<{registration_open:boolean}>('account_command',{p_actor:null,p_session:null,p_command:'public.configuration',p_data:{}});ensure(settings.registration_open,403,'REGISTRATION_CLOSED','Pendaftaran sedang ditutup');
     if(this.auth){
-      const result=await this.auth.auth.signUp({email,password,options:{data:{display_name:displayName},emailRedirectTo:this.c.APP_BASE_URL+'/auth/confirm'}});
-      ensure(!result.error,400,'REGISTRATION_FAILED','Pendaftaran belum dapat diproses. Periksa email dan kebijakan password.');
+      let result;
+      try{result=await this.auth.auth.signUp({email,password,options:{data:{display_name:displayName},emailRedirectTo:this.c.APP_BASE_URL+'/auth/confirm'}});}catch(error){registrationAuthFailure(error);}
+      if(result.error)registrationAuthFailure(result.error);
       // If the project disables email confirmation, do not silently grant an application session.
       return {accepted:true,email_verification_required:true,delivery:'supabase_email',role:'PENDING'};
     }
