@@ -2,8 +2,8 @@ import type { NextConfig } from 'next';
 import path from 'node:path';
 const config: NextConfig = {
   distDir:process.env.NEXT_DIST_DIR??'.next',
-  outputFileTracingRoot:path.join(__dirname,'..'),
-  outputFileTracingIncludes:{'/api/v1/app/unsigned/download':['./aplikasi/manji-gateway-release-unsigned.apk'],'/aplikasi/manji-gateway-release.apk':['./aplikasi/manji-gateway-release.apk','./aplikasi/manji-gateway-release.verification.json'],'/download':['./aplikasi/manji-gateway-release-unsigned.apk','./aplikasi/manji-gateway-release.apk','./aplikasi/manji-gateway-release.verification.json']},
+  outputFileTracingRoot:path.resolve(__dirname),
+  outputFileTracingIncludes:{'/*':['./supabase/migrations/*.sql','./supabase/seed/local-auth-fixture.sql'],'/api/v1/app/unsigned/download':['./aplikasi/manji-gateway-release-unsigned.apk'],'/aplikasi/manji-gateway-release.apk':['./aplikasi/manji-gateway-release.apk','./aplikasi/manji-gateway-release.verification.json'],'/download':['./aplikasi/manji-gateway-release-unsigned.apk','./aplikasi/manji-gateway-release.apk','./aplikasi/manji-gateway-release.verification.json']},
   poweredByHeader:false, transpilePackages:['@merchant/shared','@manji/contracts','@manji/validation','@manji/shared-types'],serverExternalPackages:['@electric-sql/pglite'],experimental:{cpus:1,webpackBuildWorker:false,workerThreads:process.env.NEXT_WORKER_THREADS==='true'},
   async headers(){return [{source:'/:path*',headers:[
     {key:'X-Content-Type-Options',value:'nosniff'}, {key:'Referrer-Policy',value:'same-origin'},

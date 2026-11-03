@@ -55,13 +55,13 @@ Blank optional variables are treated as unset, so the development template can l
 
 Signed Android distribution is optional and remains disabled without its configuration. When enabled, configure **both** `APP_RELEASE_CERT_SHA256` (comma-separated real certificate fingerprints, 64 hex characters each) and `APP_DOWNLOAD_TOKEN_SECRET` (at least 32 characters). `APP_RELEASE_BUCKET`, if supplied, must be `manji-app-releases`. Publication/signing/private-bucket gates still apply. `APP_RELEASE_TEST_MODE=1` requires a loopback PGlite sandbox and `APP_RELEASE_LOCAL_DIR`; production rejects test mode and local release paths. Do not manufacture signing identities to pass checks.
 
-`SANDBOX_DATABASE_DIR` optionally overrides the local DB path (default: `.sandbox/manji-postgres` under the process working directory). `GATEWAY_REPO_ROOT` optionally locates root migrations for local initialization. Neither changes the production driver. `NEXT_DIST_DIR`, `NEXT_WORKER_THREADS`, `PORT` and `HOSTNAME_BIND` are existing build/server controls, not payment modes or credentials.
+`SANDBOX_DATABASE_DIR` optionally overrides the local DB path (default: `.sandbox/manji-postgres` under the process working directory). Local initialization reads SQL from `web/supabase` by default; `GATEWAY_REPO_ROOT`, when explicitly supplied, selects an alternative root containing `supabase/migrations` and `supabase/seed`. Neither changes the production driver. `NEXT_DIST_DIR`, `NEXT_WORKER_THREADS`, `PORT` and `HOSTNAME_BIND` are existing build/server controls, not payment modes or credentials.
 
 ## Supabase project setup
 
-Follow the existing [shared-project deployment/migration guide](../../docs/deployment/MANJI.md). Gateway Android/dashboard/admin/API must share one project within an environment; keep development/staging separate from production. If production shares the existing Manji Food project, back it up and review existing triggers/schema/buckets first.
+Follow the [packaged database/migration guide](../supabase/README.md) and [standalone Vercel deployment guide](VERCEL.md). Gateway Android/dashboard/admin/API must share one project within an environment; keep development/staging separate from production. If production shares the existing Manji Food project, back it up and review existing triggers/schema/buckets first.
 
-Apply only the five dated gateway migrations, in order, using a reviewed owner connection and one transaction per migration:
+The complete web database package is in [supabase/](../supabase/README.md). For a new gateway schema, [supabase/SUPABASE_SETUP.sql](../supabase/SUPABASE_SETUP.sql) contains all five active migrations. For an existing installation, apply only the missing dated files from `supabase/migrations`, in order, using a reviewed owner connection and one transaction per migration:
 
 1. `202611020001_manji_schema.sql`
 2. `202611020002_manji_commands.sql`
@@ -80,7 +80,7 @@ The gateway's confirmation screen expects fragment token hashes followed by an e
 <a href="{{ .SiteURL }}/auth/confirm#token_hash={{ .TokenHash }}&type=recovery">Pulihkan akun MANJI</a>
 ```
 
-On a shared project, test destination-aware templates for both applications in staging; the gateway recovery redirect already includes `?type=recovery`, so append `#token_hash=...&type=recovery` to that permitted redirect rather than another `/auth/confirm`. No remote Auth/template changes were made. Provision the administrator via the existing reviewed `scripts/provision-admin.sql`, never user-editable metadata or a default production login.
+On a shared project, test destination-aware templates for both applications in staging; the gateway recovery redirect already includes `?type=recovery`, so append `#token_hash=...&type=recovery` to that permitted redirect rather than another `/auth/confirm`. No remote Auth/template changes were made. Provision the administrator via the existing reviewed operator SQL, now also packaged at `supabase/scripts/provision-admin.sql`, never user-editable metadata or a default production login.
 
 ## Startup and deployment validation
 

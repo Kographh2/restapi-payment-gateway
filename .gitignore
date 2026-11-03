@@ -1,4 +1,21 @@
 # Signing credentials must never enter source control.
+.env
+.env.*
+!.env.example
+!.env.production.example
+key.txt
+node_modules/
+.next/
+.next-*/
+.vercel/
+.sandbox/
+.npm-cache/
+.deployment-check/
+*.tsbuildinfo
+*.log
+hs_err_pid*.log
+replay_pid*.log
+.DS_Store
 *.jks
 *.keystore
 *.p12

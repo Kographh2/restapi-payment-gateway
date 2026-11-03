@@ -1,5 +1,61 @@
 # Production environment audit — 2026-11-02
 
+## Vercel install E404 — 2026-11-03
+
+Observed remote failure: Vercel cloned `restapi-payment-gateway` at `55eb371`, then npm tried to fetch `@manji/contracts@*` from the public registry and returned 404. Read-only Git inspection confirmed this is now a separate Git repository rooted directly at `web`: the commit includes src/package.json but none of the parent monorepo's packages, root manifest/lockfile, loader, TypeScript devDependencies or ESLint config. The initial monorepo deployment instructions therefore did not match the uploaded repository.
+
+Completed changes:
+
+- Included the existing contracts, validation, shared-types and legacy shared packages under `packages/`. Their TypeScript payloads are copied unchanged; private dependency manifests use local `file:` references rather than registry wildcards.
+- Added package-local devDependencies and direct `@next/env`, local loader/ESLint configuration, Node 24.x, `package-lock.json`, and Vercel `npm ci`/`npm run build` settings. The lockfile was seeded from the existing monorepo lock and normalized successfully with an offline package-lock-only npm install; locked external versions match the installed/reference versions, with no intended library upgrade.
+- Made Next file tracing and TypeScript package includes repository-local. Runtime database-root detection now checks the app package identity rather than requiring the directory basename `web`, preserving explicit GATEWAY_REPO_ROOT and original monorepo entry points.
+- Added safe development/production environment templates that were absent from the Git source, keeping all real .env/key files untouched. Updated standalone Docker configuration and deployment/readme instructions. All production validation, provider-disabled behavior, payment authority, SQL and existing signed/unsigned routes remain enforced.
+- Added Git/Vercel/Docker ignore rules. Read-only Git inspection found .next variants, .sandbox, .env, key.txt and tsconfig.tsbuildinfo already tracked; ignore rules alone cannot remove them from existing commits. Prepared `scripts/untrack-local-files.ps1` to remove only their index entries while preserving local files. The session provides .git as read-only, so this operator script was not executed; no staging, commit, push, history rewrite, credential access/rotation, Vercel configuration change or remote deployment occurred.
+
+Validation and boundaries:
+
+| Check | Result |
+| --- | --- |
+| Private dependencies and lockfile | Passed: direct and transitive private dependencies resolve to local package files, the lock root matches package.json and all exports exist within this repository. |
+| Isolated npm ci --dry-run --offline | Passed against a fresh source copy with its own package.json/packages/lockfile; no private registry lookup was required. This is not a successful full install. |
+| Real isolated npm ci | Blocked by external package downloads: initial ENOTCACHED, online attempt ECONNREFUSED 127.0.0.1:9, and another offline attempt ENOTCACHED. Copying 120 exact cached registry tarballs from the existing user cache into the workspace cache still left missing required tarballs. No false npm-ci success is claimed. |
+| Build-only isolated dependency fallback | Copied 143 available packages from the existing installed tree after checking their versions against the lockfile. This does not establish fresh registry-download/integrity verification. All 19 direct production/development dependencies resolve within the isolated checkout, including private package junctions that point inside that checkout. |
+| Isolated source checks | TypeScript and ESLint passed using only that isolated tree. Twelve deployment/environment/download tests passed with zero failures/skips. A first 256 MB typecheck hit its heap limit; the final explicit typecheck passed at 512 MB. A separate test attempt hit ENOSPC in the system temp directory; the final isolated tests passed with process-scoped TEMP/TMP pointing to ignored workspace scratch space. |
+| Optimized standalone compilation | Passed with Next 15.5.28 and no unresolved private-package imports. Source copy excluded the real .env, key.txt, .sandbox, .next and parent sources. Build environment used explicit synthetic local sandbox fixtures only. |
+| Full default build | Failed after successful compilation at lint/type worker startup: spawn EPERM. It is not reported as a successful build. |
+| Existing worker-thread build option | Compilation, lint and type validation passed; it then failed during static generation with DataCloneError: ()=>null could not be cloned. This alternate build is also not reported as successful. No lint/type gate or application feature was disabled. |
+| SQL package -Check | Passed: five original migration bodies/order/transactions are unchanged. No hosted migration was executed. |
+| Diff whitespace | git diff --check passed. Existing CRLF conversion notices are not code failures. |
+| Hosted Vercel/Supabase/installer acceptance | Not performed. The operator must commit the complete source, local packages, lockfile, Supabase package and Vercel settings, clean previously tracked local files, then redeploy from the repository root/default directory. |
+
+The complete source changes are reviewable locally. `docs/VERCEL.md` records Root Directory default/`.` for this standalone GitHub repository, Node 24.x, `npm ci`, `npm run build`, environment configuration, source cleanup and the difference from deploying the original parent monorepo. Ignored `.deployment-check/` and `.npm-cache/` contain local validation artifacts only and must not be committed or uploaded. No Android build or Gradle command was run.
+
+## Paket database lengkap di /supabase — 2026-11-03
+
+Request: include the complete application's SQL under `/supabase`. This session's workspace root is `web`, so the resulting self-contained database package is `web/supabase`. The parent monorepo's source files are preserved; this operation does not export or migrate live user data.
+
+- [x] Included five active migrations, covering the 23 application table definitions, functions/RPCs, constraints/indexes/triggers, RLS/grants, payment authority, Realtime publication, webhook worker and private Android release catalog/storage.
+- [x] Moved the combined initial-install bundle from `web/SUPABASE_SETUP.sql` to `web/supabase/SUPABASE_SETUP.sql`. It includes only the active migrations, in order, with one transaction per migration and original source SHA-256 comments.
+- [x] Included existing `seed.sql`, the explicitly local-only Auth fixture and protected psql administrator provisioning script. Placed the three historical public-schema migrations in `supabase/archive/legacy-public`, outside active migrations and the combined bundle. All eleven copied SQL source files match their parent originals by SHA-256.
+- [x] Added Indonesian installation/upgrade/admin/local/archive instructions and a read-only `supabase/scripts/verify.sql` for hosted metadata checks. Updated README/deployment references and the exporter with a non-writing `-Check` mode.
+- [x] Default local runtime now reads package-local migrations/fixture from `web/supabase`; an explicit `GATEWAY_REPO_ROOT` remains a supported override. Persistent database locations, environments, hosted Supabase driver and existing business rules were not changed. Next file tracing includes the required local migration/fixture files.
+
+Actual validation from `web`:
+
+| Check | Result |
+| --- | --- |
+| Export script `-Check` | Passed: all five bundled source bodies match, correct order, five separate BEGIN/COMMIT pairs. |
+| Eleven source copy SHA-256 comparisons | Passed: five active migrations, three historical migrations, seed, Auth fixture and admin provisioning. |
+| Existing SQL migration/registration test | Passed with the new default package-local path. |
+| Existing SQL tenant isolation/RLS test | Passed: cross-tenant reads/writes, secret access and privileged RPC denial. |
+| Existing SQL settlement/refund test | Passed: immutable matching verification is required for privileged state transitions. |
+| Existing SQL distribution-storage test | Passed from web using `web/supabase`: direct bucket access denied despite broad older policies; unrelated existing bucket unchanged. |
+| TypeScript and ESLint | Passed with zero lint warnings. |
+| Additional monorepo-root migration test | Two attempts failed: first native scrypt `Deriving bits failed` after the migrations loaded, then PGlite/WASM `RuntimeError: unreachable` during initdb. These attempts are not claimed as passing. The four completed web SQL tests above remain the actual passing integration evidence. |
+| Hosted Supabase and deployment tracing artifacts | Not executed/verified. `verify.sql` is prepared for operator use on the hosted project; no live acceptance is claimed. |
+
+Checks ran sequentially to limit Windows resource pressure. SQL tests used Node `--max-old-space-size=384 --max-semi-space-size=1 --liftoff-only --no-wasm-tier-up --wasm-num-compilation-tasks=1` and the existing TypeScript loader; typecheck/lint used a 256 MB old-space limit. The root retry used 256 MB and encountered the separately recorded WASM initialization failure. No cryptographic check, RLS policy, payment guard or hosted release gate was weakened to make a test pass. No Gradle, Android rebuild, credential commit, local data reset or remote database mutation occurred.
+
 ## SQL Supabase di root workspace — 2026-11-03
 
 - [x] Located the five active `20261102*.sql` migrations from `src/services/database.ts` and the current deployment guide; excluded historical migrations and the local auth fixture.

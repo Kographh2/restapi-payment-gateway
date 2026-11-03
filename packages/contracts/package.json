@@ -1,0 +1,1 @@
+{"name":"@manji/contracts","version":"0.2.0","private":true,"exports":{".":"./index.ts","./webhooks":"./webhooks.ts"},"dependencies":{"@manji/shared-types":"file:../shared-types","@manji/validation":"file:../validation"}}

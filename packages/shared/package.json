@@ -1,0 +1,1 @@
+{"name":"@merchant/shared","version":"0.1.0","private":true,"exports":"./index.ts","dependencies":{"zod":"^3.25.0"}}

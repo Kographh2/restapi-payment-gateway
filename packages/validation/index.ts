@@ -1,0 +1,17 @@
+import {z} from 'zod';
+export const amount=z.number().int().min(1).max(10_000_000);
+export const uuid=z.string().uuid();
+export const packageName=z.string().min(3).max(180).regex(/^[A-Za-z][\w]*(?:\.[A-Za-z][\w]*)+$/);
+export const password=z.string().min(12).max(128);
+export const register=z.object({email:z.string().email().max(254),password,display_name:z.string().trim().min(2).max(100)}).strict();
+export const login=z.object({email:z.string().email().max(254).optional(),password:z.string().min(1).max(256),device_name:z.string().trim().min(1).max(80).optional()}).strict();
+export const application=z.object({business_name:z.string().trim().min(2).max(120),business_description:z.string().trim().min(10).max(1000),phone:z.string().regex(/^\+?[0-9]{8,16}$/)}).strict();
+export const payment=z.object({amount_idr:amount,currency:z.literal('IDR').default('IDR'),qr_mode:z.enum(['STATIC_QRIS','PROVIDER_DYNAMIC_QRIS']).default('STATIC_QRIS'),external_reference:z.string().trim().min(1).max(120).optional()}).strict();
+export const enroll=z.object({name:z.string().trim().min(1).max(80),allowed_packages:z.array(packageName).max(5),consent:z.literal(true),empirically_verified:z.literal(true)}).strict();
+export const signal=z.object({signal_id:uuid,device_id:uuid,source_package:packageName,amount_idr:amount.nullable(),posted_at:z.string().datetime(),dedup_hash:z.string().regex(/^[a-f0-9]{64}$/),source_type:z.literal('ANDROID_NOTIFICATION')}).strict();
+export const scopes=['payments:read','payments:write','webhooks:manage','devices:enroll'] as const;
+export const apiKey=z.object({name:z.string().trim().min(1).max(80),layer:z.enum(['ENROLLMENT','INTEGRATION']),scopes:z.array(z.enum(scopes)).min(1).max(4),expires_in_days:z.number().int().min(1).max(90).default(30)}).strict().superRefine((v,ctx)=>{if(v.layer==='ENROLLMENT'&&(v.scopes.length!==1||v.scopes[0]!=='devices:enroll')||v.layer==='INTEGRATION'&&v.scopes.includes('devices:enroll'))ctx.addIssue({code:'custom',message:'Layer credential dan scope tidak cocok'});});
+export const endpoint=z.object({url:z.string().url().max(2048)}).strict();
+export const pagination=z.object({limit:z.coerce.number().int().min(1).max(100).default(25),cursor:uuid.optional(),status:z.enum(['CREATED','PENDING','PAYMENT_DETECTED','VERIFYING','PAID','EXPIRED','FAILED','REVIEW_REQUIRED','REFUNDED','SIMULATED_PAID']).optional(),q:z.string().max(120).optional()}).strict();
+export const sourceConfig=z.object({registration_open:z.boolean(),max_amount_idr:amount,signal_retention_days:z.number().int().min(1).max(30),notification_sources:z.array(z.object({package_name:packageName,evidence_note:z.string().trim().min(10).max(300),reviewed_at:z.string().datetime()}).strict()).max(20)}).strict();
+export const mockEvent=z.object({event_id:uuid,merchant_id:uuid,payment_id:uuid,transaction_id:uuid,amount_idr:amount,currency:z.literal('IDR'),event_type:z.enum(['settlement','refund']),environment:z.literal('sandbox'),timestamp:z.number().int()}).strict();

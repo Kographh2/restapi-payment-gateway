@@ -1,0 +1,1 @@
+{"name":"@manji/validation","version":"0.2.0","private":true,"exports":{".":"./index.ts","./releases":"./releases.ts"},"dependencies":{"zod":"^3.25.0"}}

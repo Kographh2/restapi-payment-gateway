@@ -1,0 +1,9 @@
+export const accountRoles=['PENDING','USER','MERCHANT','ADMIN'] as const;
+export type AccountRole=typeof accountRoles[number];
+export const paymentStates=['CREATED','PENDING','PAYMENT_DETECTED','VERIFYING','PAID','EXPIRED','FAILED','REVIEW_REQUIRED','REFUNDED','SIMULATED_PAID'] as const;
+export type PaymentState=typeof paymentStates[number];
+export const labels:Record<PaymentState,string>={CREATED:'Tagihan dibuat',PENDING:'Menunggu pembayaran',PAYMENT_DETECTED:'Terdeteksi — belum terverifikasi',VERIFYING:'Verifikasi provider berlangsung',PAID:'Pembayaran terverifikasi',EXPIRED:'Kedaluwarsa',FAILED:'Gagal / dibatalkan',REVIEW_REQUIRED:'Perlu pemeriksaan',REFUNDED:'Pengembalian terverifikasi',SIMULATED_PAID:'Simulasi — bukan pembayaran nyata'};
+export type Environment='sandbox'|'production';
+export type Profile={id:string;email:string;display_name:string;role:AccountRole;status:'ACTIVE'|'SUSPENDED'|'REJECTED';email_verified_at:string|null};
+export type Payment={id:string;merchant_id:string;public_reference:string;external_reference:string|null;amount_idr:number;currency:'IDR';qr_mode:'STATIC_QRIS'|'PROVIDER_DYNAMIC_QRIS';status:PaymentState;environment:Environment;created_at:string;expires_at:string;verification_source:string|null;verified_at:string|null;qr_source_id:string|null;provider_transaction_id:string|null;failure_reason:string|null;qr_display:string;requires_manual_amount_entry:boolean};
+export type ApiErrorBody={error:{code:string;message:string;request_id:string}};

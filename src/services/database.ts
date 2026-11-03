@@ -4,9 +4,12 @@ import {readFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import type {Config} from './config';
 import {databaseError,passwordHash} from './security';
+import {applicationRoot} from './application-root';
 export const schema='manji_gateway';
 export const sandboxAdmin='10000000-0000-4000-8000-000000000001';
-const root=process.env.GATEWAY_REPO_ROOT??(path.basename(process.cwd())==='web'?path.resolve(process.cwd(),'..'):process.cwd());
+// Package-local SQL works from web and the existing monorepo entry points.
+// An explicit repository override still supports operator-selected fixtures.
+const root=process.env.GATEWAY_REPO_ROOT??applicationRoot();
 export const migrations=['202611020001_manji_schema.sql','202611020002_manji_commands.sql','202611020003_manji_provider_worker.sql','202611020004_manji_account_idempotency.sql','202611020005_app_distribution.sql'];
 export interface Database {rpc<T=unknown>(name:string,args:Record<string,unknown>):Promise<T>;local?:PGlite;remote?:SupabaseClient;}
 export class LocalDatabase implements Database {

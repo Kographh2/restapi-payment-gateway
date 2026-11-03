@@ -1,0 +1,2 @@
+-- Deliberately no real merchant, QR, credentials, Auth user or financial seed.
+-- npm run sandbox:setup creates a local sandbox merchant on first login only.
